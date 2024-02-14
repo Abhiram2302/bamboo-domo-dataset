@@ -1,0 +1,122 @@
+
+var base = "https://bamboo.trimble.tools";
+if (metadata.report == 'AGENTS')
+{
+	var endpoint = '/rest/api/1.0/agent/';
+	httprequest.addHeader('Authorization', 'Bearer ' + metadata.account.apikey);
+	var agentResult = httprequest.get(base + endpoint);
+	if (httprequest.getStatusCode() == 200)
+	{
+		try
+		{
+			var agentJSON = JSON.parse(agentResult);
+			datagrid.addColumn('id', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Name', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Type', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Active', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Enabled', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Busy', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Division Name', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Oracle Code', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Agent Primary Contact Email', datagrid.DATA_TYPE_STRING);
+			datagrid.addColumn('Agent Secondary Contact Email', datagrid.DATA_TYPE_STRING);
+			agentJSON.forEach(function (agentvalue)
+			{
+				datagrid.addCell(agentvalue.id);
+				datagrid.addCell(agentvalue.name);
+				datagrid.addCell(agentvalue.type);
+				datagrid.addCell(agentvalue.active);
+				datagrid.addCell(agentvalue.enabled);
+				datagrid.addCell(agentvalue.busy);
+				var id = agentvalue.id;
+				var endpoint2 = '/rest/api/1.0/agent/' + id + '/capability';
+				var agentCapabilityResult = httprequest.get(base + endpoint2);
+				var AgentDivisionName = 'N/A';
+				var AgentOracleCode = 'N/A';
+				var AgentPrimaryContactEmail = 'N/A';
+				var AgentSecondaryContactEmail = 'N/A';
+				if (httprequest.getStatusCode() == 200)
+				{
+					try
+					{
+						var agentCapabilityJSON = JSON.parse(agentCapabilityResult);
+						var expected_division_key = ["Agent-Division-Name",
+							"custom.Agent-Division-Name",
+							"Agent.Division.Name"
+						];
+
+						var expected_agent_key = ["Agent-Oracle-Code",
+							"custom.Agent-Oracle-Code",
+							"Agent.Oracle.Code"
+						];
+
+						var expected_sec_keys = ["Agent-Secondary-Contact-Email",
+							"custom.Agent-Secondary-Contact-Email",
+							"Agent.Secondary.Contact.Email",
+							"Agent.Secondary.Contact",
+							"Agent-Secondary-Contact"
+						];
+						var expected_primary_keys = ["Agent-Primary-Contact-Email",
+							"custom.Agent-Primary-Contact-Email",
+							"Agent.Primary.Contact.Email",
+							"Agent-Primary-Contact"
+						];
+
+						agentCapabilityJSON.forEach(function (capabilityValue)
+						{
+
+
+							if (expected_division_key.includes(capabilityValue.key))
+							{
+								AgentDivisionName = (capabilityValue.value === '') ? "N/A" : capabilityValue.value;
+							}
+							else if (expected_agent_key.includes(capabilityValue.key))
+							{
+								AgentOracleCode = (capabilityValue.value === '') ? "N/A" : capabilityValue.value;
+							}
+							else if (expected_primary_keys.includes(capabilityValue.key))
+							{
+								AgentPrimaryContactEmail = (capabilityValue.value === '') ? "N/A" : capabilityValue.value;
+							}
+							else if (expected_sec_keys.includes(capabilityValue.key))
+							{
+								AgentSecondaryContactEmail = (capabilityValue.value === '') ? "N/A" : capabilityValue.value;
+							}
+							if (AgentPrimaryContactEmail === "N/A" && AgentSecondaryContactEmail !== "N/A")
+							{
+								AgentPrimaryContactEmail = AgentSecondaryContactEmail
+							}
+
+
+						});
+					}
+					catch (err)
+					{
+						AgentDivisionName = 'Error';
+						AgentOracleCode = 'Error';
+						AgentPrimaryContactEmail = 'Error';
+						AgentSecondaryContactEmail = 'Error';
+						DOMO.log("Error:" + err);
+
+
+					}
+				}
+				datagrid.addCell(AgentDivisionName);
+				datagrid.addCell(AgentOracleCode);
+				datagrid.addCell(AgentPrimaryContactEmail);
+				datagrid.addCell(AgentSecondaryContactEmail);
+				datagrid.endRow();
+			});
+		}
+		catch (err)
+		{
+			datagrid.error("Error:" + err);
+
+		}
+	}
+	else
+	{
+
+		datagrid.error(httprequest.getStatusCode(), "http error " + httprequest.getStatusCode());
+	}
+}
